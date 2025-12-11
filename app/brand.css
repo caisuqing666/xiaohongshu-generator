@@ -2074,3 +2074,31 @@ html {
     grid-template-columns: 1fr;
   }
 }
+
+/* 移动端优化 - 小红书生成器专用 */
+@media (max-width: 768px) {
+  .brand-container {
+    padding: 1rem !important;
+  }
+
+  input[type="text"],
+  input[type="file"],
+  textarea,
+  select {
+    font-size: 16px !important; /* 防止 iOS 自动缩放 */
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  button {
+    touch-action: manipulation; /* 优化触摸响应 */
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* 移动端图片预览优化 */
+  img {
+    max-width: 100%;
+    height: auto;
+  }
+}

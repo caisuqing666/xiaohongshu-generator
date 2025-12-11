@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface ImageItem {
   id: string;
@@ -18,6 +18,16 @@ export default function XiaohongshuGenerator() {
   const [images, setImages] = useState<ImageItem[]>([]);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [backgroundFile, setBackgroundFile] = useState<File | null>(null);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // 处理图片上传
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -166,12 +176,12 @@ export default function XiaohongshuGenerator() {
   };
 
   return (
-    <div className="brand-container" style={{ minHeight: '100vh', padding: '2rem' }}>
-      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div className="brand-container" style={{ minHeight: '100vh', padding: isMobile ? '1rem' : '2rem' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
         <h1 style={{ 
-          fontSize: '2.5rem', 
+          fontSize: isMobile ? '1.8rem' : '2.5rem', 
           fontWeight: 700, 
-          marginBottom: '2rem',
+          marginBottom: isMobile ? '1.5rem' : '2rem',
           color: 'var(--color-text-primary)',
           textAlign: 'center'
         }}>
@@ -181,8 +191,8 @@ export default function XiaohongshuGenerator() {
         <div style={{
           background: 'var(--color-card-bg)',
           border: '1px solid var(--color-border)',
-          borderRadius: '20px',
-          padding: '2rem',
+          borderRadius: isMobile ? '15px' : '20px',
+          padding: isMobile ? '1.5rem' : '2rem',
           boxShadow: '0 2px 8px var(--color-shadow)',
         }}>
           <div style={{ marginBottom: '1.5rem' }}>
