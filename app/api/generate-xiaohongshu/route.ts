@@ -1,0 +1,591 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { createCanvas, loadImage, registerFont } from 'canvas';
+import path from 'path';
+import fs from 'fs';
+
+// 品牌颜色定义 - 参照 brand-next 风格
+const COLORS = {
+  creamBg1: '#fef9f3', // 最浅奶油色
+  creamBg2: '#f6ecdf', // 中奶油色
+  creamBg3: '#eedfce', // 深奶油色
+  textPrimary: '#2f251f', // 深咖啡色 - 主文字
+  textSecondary: '#4d4036', // 深咖啡色（稍浅）- 次要文字
+  textMuted: '#7a695b', // 柔和文字
+  accent: '#c39b7b', // 强调色
+  shadow: 'rgba(108, 82, 64, 0.12)', // 阴影色
+  coverTitle: '#2f251f', // Specific for cover main title
+  coverSubtitle: '#2f251f', // Specific for cover subtitle
+  h1Color: '#3A2F2C', // Inner page H1
+  h2Color: '#4B3F3C', // Inner page H2
+  bodyColor: '#4B3F3C', // Inner page body
+};
+
+// 小红书标准尺寸（竖版 3:4 比例）
+const WIDTH = 1242;
+const HEIGHT = 1656;
+
+// 绘制圆角矩形（兼容旧版本 canvas）
+function drawRoundedRect(
+  ctx: any,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number
+) {
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.lineTo(x + width - radius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+  ctx.lineTo(x + width, y + height - radius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+  ctx.lineTo(x + radius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+  ctx.lineTo(x, y + radius);
+  ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+}
+
+// 绘制默认背景
+function drawDefaultBackground(ctx: any) {
+  // 绘制品牌风格的渐变背景（参照 brand-next）
+  const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+  gradient.addColorStop(0, COLORS.creamBg1);
+  gradient.addColorStop(0.45, COLORS.creamBg2);
+  gradient.addColorStop(1, COLORS.creamBg3);
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // 添加径向渐变叠加（增加高级感）
+  const radial1 = ctx.createRadialGradient(WIDTH * 0.15, HEIGHT * 0.18, 0, WIDTH * 0.15, HEIGHT * 0.18, WIDTH * 0.7);
+  radial1.addColorStop(0, 'rgba(212, 181, 160, 0.14)');
+  radial1.addColorStop(1, 'transparent');
+  ctx.fillStyle = radial1;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  const radial2 = ctx.createRadialGradient(WIDTH * 0.82, HEIGHT * 0.12, 0, WIDTH * 0.82, HEIGHT * 0.12, WIDTH * 0.45);
+  radial2.addColorStop(0, 'rgba(189, 149, 127, 0.12)');
+  radial2.addColorStop(1, 'transparent');
+  ctx.fillStyle = radial2;
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+
+  // 添加细微纹理（模拟纸张质感）
+  ctx.fillStyle = 'rgba(250, 248, 245, 0.2)';
+  for (let i = 0; i < 800; i++) {
+    const x = Math.random() * WIDTH;
+    const y = Math.random() * HEIGHT;
+    const size = Math.random() * 1.5;
+    ctx.fillRect(x, y, size, size);
+  }
+}
+
+// 自动换行函数
+function wrapText(
+  ctx: any,
+  text: string,
+  maxWidth: number,
+  lineHeight: number
+): string[] {
+  const words = text.split('\n');
+  const lines: string[] = [];
+  
+  for (const word of words) {
+    if (word.trim() === '') {
+      lines.push('');
+      continue;
+    }
+    
+    let currentLine = '';
+    const chars = word.split('');
+    
+    for (const char of chars) {
+      const testLine = currentLine + char;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine !== '') {
+        lines.push(currentLine);
+        currentLine = char;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine !== '') {
+      lines.push(currentLine);
+    }
+  }
+  
+  return lines;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const { title, subtitle, content, type, images = [], backgroundImage } = await request.json();
+
+    // 封面模式必须有标题，内页模式必须有标题或内容
+    if (type === 'cover' && !title) {
+      return NextResponse.json(
+        { error: '封面模式需要填写标题' },
+        { status: 400 }
+      );
+    }
+
+    if (type === 'content' && !title && !content) {
+      return NextResponse.json(
+        { error: '内页模式需要填写标题或正文内容' },
+        { status: 400 }
+      );
+    }
+
+    // 创建画布
+    const canvas = createCanvas(WIDTH, HEIGHT);
+    const ctx = canvas.getContext('2d');
+
+    // 如果有背景图片，使用背景图片；否则使用默认渐变背景（封面和内页都支持）
+    if (backgroundImage) {
+      try {
+        // 加载背景图片
+        const bgImg = await loadImage(backgroundImage);
+        
+        // 计算缩放比例，确保图片覆盖整个画布
+        const scaleX = WIDTH / bgImg.width;
+        const scaleY = HEIGHT / bgImg.height;
+        const scale = Math.max(scaleX, scaleY); // 使用较大的缩放比例以确保覆盖
+        
+        const scaledWidth = bgImg.width * scale;
+        const scaledHeight = bgImg.height * scale;
+        
+        // 居中绘制背景图片
+        const x = (WIDTH - scaledWidth) / 2;
+        const y = (HEIGHT - scaledHeight) / 2;
+        
+        ctx.drawImage(bgImg, x, y, scaledWidth, scaledHeight);
+      } catch (error) {
+        console.error('加载背景图片失败，使用默认背景:', error);
+        // 如果加载失败，使用默认背景
+        drawDefaultBackground(ctx);
+      }
+    } else {
+      // 使用默认渐变背景
+      drawDefaultBackground(ctx);
+    }
+
+    // 设置文字样式
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+
+    if (type === 'cover') {
+      // 封面专用字体体系（参照图片风格）
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      
+      // 1. 封面主标题（最大元素，参照图片）
+      // 位置：顶部约 20% 区域，左侧有显著边距
+      const titleStartY = HEIGHT * 0.2; // 约 331px，与图片一致
+      const titleFontSize = 140; // 主标题字号增大，参照图片中的超大字号
+      const titleLineHeight = titleFontSize * 1.15; // 行距 1.15，保持紧凑但可读
+      const titleColor = COLORS.coverTitle; // 深咖啡色
+      const titleMaxWidth = WIDTH - 200; // 左侧留 100px 边距，右侧留 100px，参照图片
+      const titleLeftMargin = 100; // 左侧边距，参照图片
+      
+      ctx.fillStyle = titleColor;
+      ctx.font = `700 ${titleFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`; // 字重 700，更粗
+      
+      // 如果有背景图片，添加文字描边和阴影以确保可读性
+      if (backgroundImage) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 4;
+      }
+      
+      const titleLines = wrapText(ctx, title, titleMaxWidth, titleLineHeight);
+      for (const line of titleLines) {
+        const y = titleStartY + titleLines.indexOf(line) * titleLineHeight;
+        
+        if (backgroundImage) {
+          // 绘制描边
+          ctx.strokeText(line, titleLeftMargin, y);
+          // 绘制阴影
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 6;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
+        }
+        
+        ctx.fillText(line, titleLeftMargin, y);
+        
+        if (backgroundImage) {
+          ctx.shadowBlur = 0;
+          ctx.lineWidth = 0;
+        }
+      }
+
+      // 2. 封面副标题（参照图片）
+      // 位置：主标题下方，有较大的垂直间距，创造呼吸感
+      const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 120; // 间距 120px，参照图片中的大间距
+      const subtitleFontSize = 72; // 副标题字号增大，参照图片
+      const subtitleLineHeight = subtitleFontSize * 1.4; // 行距 1.4，更舒适
+      const subtitleColor = COLORS.coverSubtitle; // 深咖啡色
+      const subtitleMaxWidth = WIDTH - 200; // 与主标题对齐
+      
+      if (subtitle) {
+        ctx.fillStyle = subtitleColor;
+        ctx.font = `400 ${subtitleFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`; // 字重 400，常规
+        
+        if (backgroundImage) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 3;
+        }
+        
+        const subtitleLines = wrapText(ctx, subtitle, subtitleMaxWidth, subtitleLineHeight);
+        for (const line of subtitleLines) {
+          const y = subtitleStartY + subtitleLines.indexOf(line) * subtitleLineHeight;
+          
+          if (backgroundImage) {
+            ctx.strokeText(line, titleLeftMargin, y);
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 1;
+          }
+          
+          ctx.fillText(line, titleLeftMargin, y);
+          
+          if (backgroundImage) {
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0;
+          }
+        }
+      }
+
+      // 重置对齐方式
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+    } else {
+      // 内页样式：精致排版，参照图片风格
+      let currentY = 180; // 起始位置，留出更多顶部空间，更美观
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+
+      // 内页字体体系定义（参照图片风格）
+      // 主标题：较大、加粗、深灰色
+      const titleConfig = {
+        fontSize: 64,
+        fontWeight: 700,
+        color: '#2f251f', // 深咖啡色
+        lineHeight: 64 * 1.3,
+        bottomSpacing: 40,
+      };
+
+      // 副标题：中等大小、常规字重
+      const subtitleConfig = {
+        fontSize: 48,
+        fontWeight: 400,
+        color: '#4d4036', // 稍浅的深咖啡色
+        lineHeight: 48 * 1.4,
+        bottomSpacing: 50,
+      };
+
+      // 正文：舒适阅读的字体大小
+      const bodyConfig = {
+        fontSize: 40,
+        fontWeight: 400,
+        color: '#4d4036', // 深咖啡色
+        lineHeight: 40 * 1.8, // 更大的行距，更舒适的阅读体验
+        paragraphSpacing: 32, // 段落间距
+      };
+
+      // H1 标题（内容中的一级标题）
+      const h1Config = {
+        fontSize: 56,
+        fontWeight: 600,
+        color: COLORS.h1Color,
+        lineHeight: 56 * 1.3,
+        bottomSpacing: 36,
+      };
+
+      // H2 标题（内容中的二级标题）
+      const h2Config = {
+        fontSize: 48,
+        fontWeight: 500,
+        color: COLORS.h2Color,
+        lineHeight: 48 * 1.4,
+        bottomSpacing: 28,
+      };
+
+      // 先绘制主标题（title）
+      if (title && title.trim()) {
+        ctx.fillStyle = titleConfig.color;
+        ctx.font = `${titleConfig.fontWeight} ${titleConfig.fontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+        
+        const titleLines = wrapText(ctx, title, WIDTH - 240, titleConfig.lineHeight);
+        for (let lineIndex = 0; lineIndex < titleLines.length; lineIndex++) {
+          const line = titleLines[lineIndex];
+          if (backgroundImage) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 4;
+            ctx.strokeText(line, 120, currentY);
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 5;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 2;
+          }
+          ctx.fillText(line, 120, currentY);
+          if (backgroundImage) {
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0;
+          }
+          currentY += titleConfig.lineHeight;
+        }
+        currentY += titleConfig.bottomSpacing;
+      }
+
+      // 再绘制副标题（subtitle）
+      if (subtitle && subtitle.trim()) {
+        ctx.fillStyle = subtitleConfig.color;
+        ctx.font = `${subtitleConfig.fontWeight} ${subtitleConfig.fontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+        
+        const subtitleLines = wrapText(ctx, subtitle, WIDTH - 240, subtitleConfig.lineHeight);
+        for (let lineIndex = 0; lineIndex < subtitleLines.length; lineIndex++) {
+          const line = subtitleLines[lineIndex];
+          if (backgroundImage) {
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 3;
+            ctx.strokeText(line, 120, currentY);
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 1;
+          }
+          ctx.fillText(line, 120, currentY);
+          if (backgroundImage) {
+            ctx.shadowBlur = 0;
+            ctx.lineWidth = 0;
+          }
+          currentY += subtitleConfig.lineHeight;
+        }
+        currentY += subtitleConfig.bottomSpacing;
+      }
+
+      // 按段落分割（保留空行）
+      const paragraphs = content.split('\n');
+      
+      // 按位置排序图片
+      const sortedImages = [...images].sort((a, b) => a.position - b.position);
+      
+      // 绘制段落和插入图片（使用 for...of 以支持 await）
+      let imageIndex = 0;
+      let paragraphCount = 0; // 用于图片位置计算
+      
+      for (const paragraph of paragraphs) {
+        const trimmed = paragraph.trim();
+        
+        // Insert images at position 0 (after title/subtitle, before first content paragraph)
+        while (imageIndex < sortedImages.length && sortedImages[imageIndex].position === 0) {
+          const imageData = sortedImages[imageIndex];
+          try {
+            const img = await loadImage(imageData.data);
+            const maxWidth = WIDTH - 240;
+            const maxHeight = 400;
+            let imgWidth = img.width;
+            let imgHeight = img.height;
+            
+            if (imgWidth > maxWidth) {
+              const ratio = maxWidth / imgWidth;
+              imgWidth = maxWidth;
+              imgHeight = imgHeight * ratio;
+            }
+            
+            if (imgHeight > maxHeight) {
+              const ratio = maxHeight / imgHeight;
+              imgHeight = maxHeight;
+              imgWidth = imgWidth * ratio;
+            }
+            
+            const imgX = (WIDTH - imgWidth) / 2;
+            currentY += 30;
+            
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 4;
+            
+            const radius = 12;
+            ctx.fillStyle = 'white';
+            drawRoundedRect(ctx, imgX - 10, currentY - 10, imgWidth + 20, imgHeight + 20, radius);
+            ctx.fill();
+            
+            ctx.drawImage(img, imgX, currentY, imgWidth, imgHeight);
+            ctx.restore();
+            
+            currentY += imgHeight + 40;
+          } catch (error) {
+            console.error('加载图片失败:', error);
+          }
+          imageIndex++;
+        }
+        
+        if (trimmed === '') {
+          currentY += bodyConfig.paragraphSpacing;
+        } else {
+          let textToDraw = trimmed;
+          let config = bodyConfig;
+          let isTitle = false;
+
+          if (trimmed.startsWith('# ')) {
+            textToDraw = trimmed.substring(2);
+            config = h1Config;
+            isTitle = true;
+          } else if (trimmed.startsWith('## ')) {
+            textToDraw = trimmed.substring(3);
+            config = h2Config;
+            isTitle = true;
+          }
+
+          ctx.fillStyle = config.color;
+          ctx.font = `${config.fontWeight} ${config.fontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+
+          const lines = wrapText(ctx, textToDraw, WIDTH - 240, config.lineHeight);
+          for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
+            const line = lines[lineIndex];
+            if (currentY > HEIGHT - 150) {
+              break;
+            }
+            // 正文首行不缩进，保持左对齐的简洁风格
+            const indent = 0;
+
+            if (backgroundImage) { // Apply stroke and shadow for readability on background image
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+              ctx.lineWidth = 3;
+              ctx.strokeText(line, 120 + indent, currentY);
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
+              ctx.shadowBlur = 4;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 1;
+            }
+
+            ctx.fillText(line, 120 + indent, currentY);
+
+            if (backgroundImage) {
+              ctx.shadowBlur = 0;
+              ctx.lineWidth = 0;
+            }
+            currentY += config.lineHeight;
+          }
+          currentY += config.bottomSpacing || bodyConfig.paragraphSpacing; // Use specific bottom spacing or default
+          paragraphCount++;
+
+          // Insert images after this paragraph
+          while (imageIndex < sortedImages.length && sortedImages[imageIndex].position === paragraphCount) {
+            const imageData = sortedImages[imageIndex];
+            try {
+              const img = await loadImage(imageData.data);
+              const maxWidth = WIDTH - 240;
+              const maxHeight = 400;
+              let imgWidth = img.width;
+              let imgHeight = img.height;
+              
+              if (imgWidth > maxWidth) {
+                const ratio = maxWidth / imgWidth;
+                imgWidth = maxWidth;
+                imgHeight = imgHeight * ratio;
+              }
+              
+              if (imgHeight > maxHeight) {
+                const ratio = maxHeight / imgHeight;
+                imgHeight = maxHeight;
+                imgWidth = imgWidth * ratio;
+              }
+              
+              const imgX = (WIDTH - imgWidth) / 2;
+              currentY += 30;
+              
+              ctx.save();
+              ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+              ctx.shadowBlur = 8;
+              ctx.shadowOffsetX = 0;
+              ctx.shadowOffsetY = 4;
+              
+              const radius = 12;
+              ctx.fillStyle = 'white';
+              drawRoundedRect(ctx, imgX - 10, currentY - 10, imgWidth + 20, imgHeight + 20, radius);
+              ctx.fill();
+              
+              ctx.drawImage(img, imgX, currentY, imgWidth, imgHeight);
+              ctx.restore();
+              
+              currentY += imgHeight + 40;
+            } catch (error) {
+              console.error('加载图片失败:', error);
+            }
+            imageIndex++;
+          }
+        }
+      }
+
+      // Handle images positioned at the end
+      const maxPosition = paragraphs.filter((p: string) => p.trim() !== '').length + 1;
+      while (imageIndex < sortedImages.length && sortedImages[imageIndex].position >= maxPosition) {
+        const imageData = sortedImages[imageIndex];
+        try {
+          const img = await loadImage(imageData.data);
+          const maxWidth = WIDTH - 240;
+          const maxHeight = 400;
+          let imgWidth = img.width;
+          let imgHeight = img.height;
+          
+          if (imgWidth > maxWidth) {
+            const ratio = maxWidth / imgWidth;
+            imgWidth = maxWidth;
+            imgHeight = imgHeight * ratio;
+          }
+          
+          if (imgHeight > maxHeight) {
+            const ratio = maxHeight / imgHeight;
+            imgHeight = maxHeight;
+            imgWidth = imgWidth * ratio;
+          }
+          
+          const imgX = (WIDTH - imgWidth) / 2;
+          currentY += 30;
+          
+          ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
+          ctx.shadowBlur = 8;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 4;
+          
+          const radius = 12;
+          ctx.fillStyle = 'white';
+          drawRoundedRect(ctx, imgX - 10, currentY - 10, imgWidth + 20, imgHeight + 20, radius);
+          ctx.fill();
+          
+          ctx.drawImage(img, imgX, currentY, imgWidth, imgHeight);
+          ctx.restore();
+          
+          currentY += imgHeight + 40;
+        } catch (error) {
+          console.error('加载图片失败:', error);
+        }
+        imageIndex++;
+      }
+    }
+
+    // 转换为 Buffer
+    const buffer = canvas.toBuffer('image/png') as Buffer;
+
+    // 返回图片
+    return new NextResponse(buffer, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Content-Disposition': `attachment; filename="xiaohongshu-${type}.png"`,
+      },
+    });
+  } catch (error) {
+    console.error('生成图片失败:', error);
+    return NextResponse.json(
+      { error: '生成图片失败' },
+      { status: 500 }
+    );
+  }
+}
