@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createCanvas, loadImage, registerFont } from 'canvas';
-import path from 'path';
-import fs from 'fs';
+import { createCanvas, loadImage } from 'canvas';
 
 // 品牌颜色定义 - 参照 brand-next 风格
 const COLORS = {
@@ -292,6 +290,7 @@ export async function POST(request: NextRequest) {
         color: '#4d4036', // 深咖啡色
         lineHeight: 40 * 1.8, // 更大的行距，更舒适的阅读体验
         paragraphSpacing: 32, // 段落间距
+        bottomSpacing: 32, // 添加 bottomSpacing 属性
       };
 
       // H1 标题（内容中的一级标题）
@@ -301,6 +300,7 @@ export async function POST(request: NextRequest) {
         color: COLORS.h1Color,
         lineHeight: 56 * 1.3,
         bottomSpacing: 36,
+        paragraphSpacing: 32, // 添加 paragraphSpacing 属性
       };
 
       // H2 标题（内容中的二级标题）
@@ -310,6 +310,7 @@ export async function POST(request: NextRequest) {
         color: COLORS.h2Color,
         lineHeight: 48 * 1.4,
         bottomSpacing: 28,
+        paragraphSpacing: 32, // 添加 paragraphSpacing 属性
       };
 
       // 先绘制主标题（title）
@@ -572,10 +573,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 转换为 Buffer
-    const buffer = canvas.toBuffer('image/png') as Buffer;
+    const buffer = canvas.toBuffer('image/png');
 
     // 返回图片
-    return new NextResponse(buffer, {
+    return new NextResponse(buffer as unknown as BodyInit, {
       headers: {
         'Content-Type': 'image/png',
         'Content-Disposition': `attachment; filename="xiaohongshu-${type}.png"`,
