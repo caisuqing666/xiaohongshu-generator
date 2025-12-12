@@ -187,7 +187,7 @@ export async function POST(request: NextRequest) {
       const titleLeftMargin = 100; // 左侧边距，参照图片
       
       ctx.fillStyle = titleColor;
-      ctx.font = `700 ${titleFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`; // 字重 700，更粗
+      ctx.font = `700 ${titleFontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`; // 字重 700，更粗，优先使用服务器环境可用字体
       
       // 如果有背景图片，添加文字描边和阴影以确保可读性
       if (backgroundImage) {
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
       
       if (subtitle) {
         ctx.fillStyle = subtitleColor;
-        ctx.font = `400 ${subtitleFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`; // 字重 400，常规
+        ctx.font = `400 ${subtitleFontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`; // 字重 400，常规，优先使用服务器环境可用字体
         
         if (backgroundImage) {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
@@ -329,7 +329,7 @@ export async function POST(request: NextRequest) {
       // 先绘制主标题（title）
       if (title && title.trim()) {
         ctx.fillStyle = titleConfig.color;
-        ctx.font = `${titleConfig.fontWeight} ${titleConfig.fontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+        ctx.font = `${titleConfig.fontWeight} ${titleConfig.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
         
         const titleLines = wrapText(ctx, title, WIDTH - 240, titleConfig.lineHeight);
         for (let lineIndex = 0; lineIndex < titleLines.length; lineIndex++) {
@@ -356,7 +356,7 @@ export async function POST(request: NextRequest) {
       // 再绘制副标题（subtitle）
       if (subtitle && subtitle.trim()) {
         ctx.fillStyle = subtitleConfig.color;
-        ctx.font = `${subtitleConfig.fontWeight} ${subtitleConfig.fontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+        ctx.font = `${subtitleConfig.fontWeight} ${subtitleConfig.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
         
         const subtitleLines = wrapText(ctx, subtitle, WIDTH - 240, subtitleConfig.lineHeight);
         for (let lineIndex = 0; lineIndex < subtitleLines.length; lineIndex++) {
@@ -457,7 +457,7 @@ export async function POST(request: NextRequest) {
           }
 
           ctx.fillStyle = config.color;
-          ctx.font = `${config.fontWeight} ${config.fontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+          ctx.font = `${config.fontWeight} ${config.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
 
           const lines = wrapText(ctx, textToDraw, WIDTH - 240, config.lineHeight);
           for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {

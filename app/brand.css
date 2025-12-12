@@ -2102,3 +2102,9 @@ html {
     height: auto;
   }
 }
+
+/* Next.js Portal 样式覆盖 */
+nextjs-portal {
+  left: unset;
+  top: unset;
+}
