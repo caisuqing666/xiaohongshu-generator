@@ -178,11 +178,11 @@ export async function POST(request: NextRequest) {
       ctx.textBaseline = 'top';
       
       // 1. 封面主标题（最大元素，参照图片）
-      // 位置：顶部约 20% 区域，左侧有显著边距
-      const titleStartY = HEIGHT * 0.2; // 约 331px，与图片一致
-      const titleFontSize = 140; // 主标题字号增大，参照图片中的超大字号
+      // 位置：顶部约 8% 区域，左侧有显著边距，增加呼吸感
+      const titleStartY = HEIGHT * 0.08; // 约 132px，更靠上，增加顶部留白
+      const titleFontSize = 130; // 主标题字号
       const titleLineHeight = titleFontSize * 1.15; // 行距 1.15，保持紧凑但可读
-      const titleColor = COLORS.coverTitle; // 深咖啡色
+      const titleColor = '#2f251f'; // 深咖啡色
       const titleMaxWidth = WIDTH - 200; // 左侧留 100px 边距，右侧留 100px，参照图片
       const titleLeftMargin = 100; // 左侧边距，参照图片
       
@@ -220,9 +220,9 @@ export async function POST(request: NextRequest) {
       // 2. 封面副标题（参照图片）
       // 位置：主标题下方，有较大的垂直间距，创造呼吸感
       const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 120; // 间距 120px，参照图片中的大间距
-      const subtitleFontSize = 72; // 副标题字号增大，参照图片
+      const subtitleFontSize = 60; // 副标题字号
       const subtitleLineHeight = subtitleFontSize * 1.4; // 行距 1.4，更舒适
-      const subtitleColor = COLORS.coverSubtitle; // 深咖啡色
+      const subtitleColor = '#2f251f'; // 深咖啡色
       const subtitleMaxWidth = WIDTH - 200; // 与主标题对齐
       
       if (subtitle) {
@@ -254,6 +254,19 @@ export async function POST(request: NextRequest) {
           }
         }
       }
+
+      // 3. 水印：INFJ·成长记录（底部中间）
+      const watermarkText = 'INFJ·成长记录';
+      const watermarkFontSize = 40;
+      const watermarkColor = '#7a695b'; // 比副标题淡一点的咖啡色
+      const watermarkY = HEIGHT - 120; // 距离底部120px
+      
+      ctx.fillStyle = watermarkColor;
+      ctx.font = `400 ${watermarkFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+      ctx.textAlign = 'center'; // 居中对齐
+      ctx.textBaseline = 'middle';
+      
+      ctx.fillText(watermarkText, WIDTH / 2, watermarkY);
 
       // 重置对齐方式
       ctx.textAlign = 'left';
