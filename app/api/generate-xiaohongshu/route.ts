@@ -581,8 +581,21 @@ export async function POST(request: NextRequest) {
         } catch (error) {
           console.error('加载图片失败:', error);
         }
-        imageIndex++;
+          imageIndex++;
       }
+
+      // 内页水印：INFJ·成长记录（底部中间，参照封面页）
+      const watermarkText = 'INFJ·成长记录';
+      const watermarkFontSize = 40;
+      const watermarkColor = '#7a695b'; // 比副标题淡一点的咖啡色
+      const watermarkY = HEIGHT - 120; // 距离底部120px
+      
+      ctx.fillStyle = watermarkColor;
+      ctx.font = `400 ${watermarkFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+      ctx.textAlign = 'center'; // 居中对齐
+      ctx.textBaseline = 'middle';
+      
+      ctx.fillText(watermarkText, WIDTH / 2, watermarkY);
     }
 
     // 转换为 Buffer
