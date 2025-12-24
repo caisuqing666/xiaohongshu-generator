@@ -13,7 +13,7 @@ export default function XiaohongshuGenerator() {
   const [title, setTitle] = useState('');
   const [subtitle, setSubtitle] = useState('');
   const [content, setContent] = useState('');
-  const [type, setType] = useState<'cover' | 'content'>('cover');
+  const [type, setType] = useState<'cover' | 'content' | 'wechat-cover'>('cover');
   const [loading, setLoading] = useState(false);
   const [images, setImages] = useState<ImageItem[]>([]);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
@@ -114,8 +114,8 @@ export default function XiaohongshuGenerator() {
   };
 
   const generateImage = async () => {
-    // 封面模式必须有标题，内页模式必须有标题或内容
-    if (type === 'cover' && !title.trim()) {
+    // 封面模式和公众号封面模式必须有标题，内页模式必须有标题或内容
+    if ((type === 'cover' || type === 'wechat-cover') && !title.trim()) {
       alert('封面模式需要填写标题');
       return;
     }
@@ -152,7 +152,7 @@ export default function XiaohongshuGenerator() {
       }
 
       const blob = await response.blob();
-      
+
       // 检查是否是有效的图片
       if (!blob.type.startsWith('image/')) {
         throw new Error('服务器返回的不是图片文件');
@@ -178,9 +178,9 @@ export default function XiaohongshuGenerator() {
   return (
     <div className="brand-container" style={{ minHeight: '100vh', padding: isMobile ? '1rem' : '2rem' }}>
       <div style={{ maxWidth: '800px', margin: '0 auto', width: '100%' }}>
-        <h1 style={{ 
-          fontSize: isMobile ? '1.8rem' : '2.5rem', 
-          fontWeight: 700, 
+        <h1 style={{
+          fontSize: isMobile ? '1.8rem' : '2.5rem',
+          fontWeight: 700,
           marginBottom: isMobile ? '1.5rem' : '2rem',
           color: 'var(--color-text-primary)',
           textAlign: 'center'
@@ -196,8 +196,8 @@ export default function XiaohongshuGenerator() {
           boxShadow: '0 2px 8px var(--color-shadow)',
         }}>
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
+            <label style={{
+              display: 'block',
               marginBottom: '0.5rem',
               color: 'var(--color-text-primary)',
               fontWeight: 600
@@ -219,7 +219,7 @@ export default function XiaohongshuGenerator() {
                   transition: 'all 0.3s ease',
                 }}
               >
-                封面 (1242×1656px)
+                小红书封面 (3:4)
               </button>
               <button
                 onClick={() => setType('content')}
@@ -235,21 +235,37 @@ export default function XiaohongshuGenerator() {
                   transition: 'all 0.3s ease',
                 }}
               >
-                内页 (1242×1656px)
+                内页 (3:4)
+              </button>
+              <button
+                onClick={() => setType('wechat-cover')}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem',
+                  borderRadius: '10px',
+                  border: `2px solid ${type === 'wechat-cover' ? 'var(--color-accent)' : 'var(--color-border)'}`,
+                  background: type === 'wechat-cover' ? 'var(--color-accent)' : 'transparent',
+                  color: type === 'wechat-cover' ? 'white' : 'var(--color-text-primary)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'all 0.3s ease',
+                }}
+              >
+                公众号封面 (2.35:1)
               </button>
             </div>
           </div>
 
           {/* 背景图片上传（封面和内页都支持） */}
-          {(type === 'cover' || type === 'content') && (
+          {(type === 'cover' || type === 'content' || type === 'wechat-cover') && (
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ 
-                display: 'block', 
+              <label style={{
+                display: 'block',
                 marginBottom: '0.5rem',
                 color: 'var(--color-text-primary)',
                 fontWeight: 600
               }}>
-                背景图片 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(可选，上传后会作为{type === 'cover' ? '封面' : '内页'}背景)</span>
+                背景图片 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(可选，上传后会作为{type === 'wechat-cover' ? '公众号封面' : type === 'cover' ? '封面' : '内页'}背景)</span>
               </label>
               {backgroundImage ? (
                 <div style={{
@@ -327,13 +343,13 @@ export default function XiaohongshuGenerator() {
           )}
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
+            <label style={{
+              display: 'block',
               marginBottom: '0.5rem',
               color: 'var(--color-text-primary)',
               fontWeight: 600
             }}>
-              主标题 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({type === 'cover' ? '必填' : '可选'})</span>
+              主标题 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({(type === 'cover' || type === 'wechat-cover') ? '必填' : '可选'})</span>
             </label>
             <input
               type="text"
@@ -353,8 +369,8 @@ export default function XiaohongshuGenerator() {
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
+            <label style={{
+              display: 'block',
               marginBottom: '0.5rem',
               color: 'var(--color-text-primary)',
               fontWeight: 600
@@ -379,8 +395,8 @@ export default function XiaohongshuGenerator() {
           </div>
 
           <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{ 
-              display: 'block', 
+            <label style={{
+              display: 'block',
               marginBottom: '0.5rem',
               color: 'var(--color-text-primary)',
               fontWeight: 600
@@ -419,8 +435,8 @@ export default function XiaohongshuGenerator() {
           {/* 图片上传区域（仅内页模式） */}
           {type === 'content' && (
             <div style={{ marginBottom: '1.5rem' }}>
-              <label style={{ 
-                display: 'block', 
+              <label style={{
+                display: 'block',
                 marginBottom: '0.5rem',
                 color: 'var(--color-text-primary)',
                 fontWeight: 600
@@ -490,7 +506,7 @@ export default function XiaohongshuGenerator() {
                           />
                           <div style={{ flex: 1 }}>
                             <div style={{ marginBottom: '0.5rem' }}>
-                              <label style={{ 
+                              <label style={{
                                 fontSize: '0.9rem',
                                 color: 'var(--color-text-secondary)',
                                 display: 'block',
@@ -555,17 +571,31 @@ export default function XiaohongshuGenerator() {
 
           <button
             onClick={generateImage}
-            disabled={loading || (type === 'cover' && !title.trim()) || (type === 'content' && !title.trim() && !content.trim())}
+            disabled={
+              loading ||
+              ((type === 'cover' || type === 'wechat-cover') && !title.trim()) ||
+              (type === 'content' && !title.trim() && !content.trim())
+            }
             style={{
               width: '100%',
               padding: '1rem 2rem',
               borderRadius: '25px',
-              background: loading || (type === 'cover' && !title.trim()) || (type === 'content' && !title.trim() && !content.trim()) ? 'var(--color-text-muted)' : 'var(--color-accent)',
+              background:
+                loading ||
+                  ((type === 'cover' || type === 'wechat-cover') && !title.trim()) ||
+                  (type === 'content' && !title.trim() && !content.trim())
+                  ? 'var(--color-text-muted)'
+                  : 'var(--color-accent)',
               color: 'white',
               border: 'none',
               fontSize: '1.1rem',
               fontWeight: 600,
-              cursor: loading || (type === 'cover' && !title.trim()) || (type === 'content' && !title.trim() && !content.trim()) ? 'not-allowed' : 'pointer',
+              cursor:
+                loading ||
+                  ((type === 'cover' || type === 'wechat-cover') && !title.trim()) ||
+                  (type === 'content' && !title.trim() && !content.trim())
+                  ? 'not-allowed'
+                  : 'pointer',
               transition: 'all 0.3s ease',
               boxShadow: '0 2px 8px var(--color-shadow)',
             }}
@@ -584,23 +614,24 @@ export default function XiaohongshuGenerator() {
           fontSize: '0.9rem',
           lineHeight: '1.6',
         }}>
-          <h3 style={{ 
-            color: 'var(--color-text-primary)', 
+          <h3 style={{
+            color: 'var(--color-text-primary)',
             marginBottom: '0.5rem',
             fontSize: '1.1rem'
           }}>
             使用说明：
           </h3>
           <ul style={{ paddingLeft: '1.5rem', margin: 0 }}>
-            <li>封面：适合展示标题和副标题，简洁大气</li>
+            <li>小红书封面：适合展示标题和副标题，简洁大气</li>
+            <li>公众号封面：2.35:1 横版高清单图，适合微信文章首图</li>
             <li>内页：支持 Markdown 风格标记</li>
             <li style={{ marginTop: '0.5rem' }}><strong>内页格式：</strong></li>
             <li style={{ marginLeft: '1rem' }}>• <code># 标题</code> - 一级标题（52px，字重600）</li>
             <li style={{ marginLeft: '1rem' }}>• <code>## 标题</code> - 二级标题（44px，字重500）</li>
             <li style={{ marginLeft: '1rem' }}>• 普通文本 - 正文（36px，字重400，行距1.6）</li>
-            <li style={{ marginTop: '0.5rem' }}>图片尺寸：1242×1656px（小红书标准尺寸）</li>
+            <li style={{ marginTop: '0.5rem' }}>图片尺寸：1242×1656px（小红书），2350×1000px（公众号）</li>
             <li>风格：奶油色背景 + 深咖色文字，与品牌风格一致</li>
-            <li>背景图片：封面和内页均可上传背景图片，文字会自动优化可读性</li>
+            <li>背景图片：均可上传背景图片，文字会自动优化可读性</li>
           </ul>
         </div>
       </div>

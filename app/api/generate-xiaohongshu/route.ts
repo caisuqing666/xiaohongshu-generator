@@ -45,33 +45,34 @@ function drawRoundedRect(
 }
 
 // 绘制默认背景
-function drawDefaultBackground(ctx: any) {
+// 绘制默认背景
+function drawDefaultBackground(ctx: any, width: number, height: number) {
   // 绘制品牌风格的渐变背景（参照 brand-next）
-  const gradient = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
   gradient.addColorStop(0, COLORS.creamBg1);
   gradient.addColorStop(0.45, COLORS.creamBg2);
   gradient.addColorStop(1, COLORS.creamBg3);
   ctx.fillStyle = gradient;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, width, height);
 
   // 添加径向渐变叠加（增加高级感）
-  const radial1 = ctx.createRadialGradient(WIDTH * 0.15, HEIGHT * 0.18, 0, WIDTH * 0.15, HEIGHT * 0.18, WIDTH * 0.7);
+  const radial1 = ctx.createRadialGradient(width * 0.15, height * 0.18, 0, width * 0.15, height * 0.18, width * 0.7);
   radial1.addColorStop(0, 'rgba(212, 181, 160, 0.14)');
   radial1.addColorStop(1, 'transparent');
   ctx.fillStyle = radial1;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, width, height);
 
-  const radial2 = ctx.createRadialGradient(WIDTH * 0.82, HEIGHT * 0.12, 0, WIDTH * 0.82, HEIGHT * 0.12, WIDTH * 0.45);
+  const radial2 = ctx.createRadialGradient(width * 0.82, height * 0.12, 0, width * 0.82, height * 0.12, width * 0.45);
   radial2.addColorStop(0, 'rgba(189, 149, 127, 0.12)');
   radial2.addColorStop(1, 'transparent');
   ctx.fillStyle = radial2;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, width, height);
 
   // 添加细微纹理（模拟纸张质感）
   ctx.fillStyle = 'rgba(250, 248, 245, 0.2)';
   for (let i = 0; i < 800; i++) {
-    const x = Math.random() * WIDTH;
-    const y = Math.random() * HEIGHT;
+    const x = Math.random() * width;
+    const y = Math.random() * height;
     const size = Math.random() * 1.5;
     ctx.fillRect(x, y, size, size);
   }
@@ -86,20 +87,20 @@ function wrapText(
 ): string[] {
   const words = text.split('\n');
   const lines: string[] = [];
-  
+
   for (const word of words) {
     if (word.trim() === '') {
       lines.push('');
       continue;
     }
-    
+
     let currentLine = '';
     const chars = word.split('');
-    
+
     for (const char of chars) {
       const testLine = currentLine + char;
       const metrics = ctx.measureText(testLine);
-      
+
       if (metrics.width > maxWidth && currentLine !== '') {
         lines.push(currentLine);
         currentLine = char;
@@ -107,12 +108,12 @@ function wrapText(
         currentLine = testLine;
       }
     }
-    
+
     if (currentLine !== '') {
       lines.push(currentLine);
     }
   }
-  
+
   return lines;
 }
 
@@ -135,8 +136,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 确定画布尺寸
+    let canvasWidth = WIDTH;
+    let canvasHeight = HEIGHT;
+
+    if (type === 'wechat-cover') {
+      canvasWidth = 2350;
+      canvasHeight = 1000;
+    }
+
     // 创建画布
-    const canvas = createCanvas(WIDTH, HEIGHT);
+    const canvas = createCanvas(canvasWidth, canvasHeight);
     const ctx = canvas.getContext('2d');
 
     // 如果有背景图片，使用背景图片；否则使用默认渐变背景（封面和内页都支持）
@@ -144,29 +154,30 @@ export async function POST(request: NextRequest) {
       try {
         // 加载背景图片
         const bgImg = await loadImage(backgroundImage);
-        
+
         // 计算缩放比例，确保图片覆盖整个画布
-        const scaleX = WIDTH / bgImg.width;
-        const scaleY = HEIGHT / bgImg.height;
+        const scaleX = canvasWidth / bgImg.width;
+        const scaleY = canvasHeight / bgImg.height;
         const scale = Math.max(scaleX, scaleY); // 使用较大的缩放比例以确保覆盖
-        
+
         const scaledWidth = bgImg.width * scale;
         const scaledHeight = bgImg.height * scale;
-        
+
         // 居中绘制背景图片
-        const x = (WIDTH - scaledWidth) / 2;
-        const y = (HEIGHT - scaledHeight) / 2;
-        
+        const x = (canvasWidth - scaledWidth) / 2;
+        const y = (canvasHeight - scaledHeight) / 2;
+
         ctx.drawImage(bgImg, x, y, scaledWidth, scaledHeight);
       } catch (error) {
         console.error('加载背景图片失败，使用默认背景:', error);
         // 如果加载失败，使用默认背景
-        drawDefaultBackground(ctx);
+        drawDefaultBackground(ctx, canvasWidth, canvasHeight);
       }
     } else {
       // 使用默认渐变背景
-      drawDefaultBackground(ctx);
+      drawDefaultBackground(ctx, canvasWidth, canvasHeight);
     }
+
 
     // 设置文字样式
     ctx.textAlign = 'center';
@@ -176,7 +187,7 @@ export async function POST(request: NextRequest) {
       // 封面专用字体体系（参照图片风格）
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
-      
+
       // 1. 封面主标题（最大元素，参照图片）
       // 位置：顶部约 8% 区域，左侧有显著边距，增加呼吸感
       const titleStartY = HEIGHT * 0.08; // 约 132px，更靠上，增加顶部留白
@@ -185,20 +196,20 @@ export async function POST(request: NextRequest) {
       const titleColor = '#2f251f'; // 深咖啡色
       const titleMaxWidth = WIDTH - 200; // 左侧留 100px 边距，右侧留 100px，参照图片
       const titleLeftMargin = 100; // 左侧边距，参照图片
-      
+
       ctx.fillStyle = titleColor;
       ctx.font = `700 ${titleFontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`; // 字重 700，更粗，优先使用服务器环境可用字体
-      
+
       // 如果有背景图片，添加文字描边和阴影以确保可读性
       if (backgroundImage) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.lineWidth = 4;
       }
-      
+
       const titleLines = wrapText(ctx, title, titleMaxWidth, titleLineHeight);
       for (const line of titleLines) {
         const y = titleStartY + titleLines.indexOf(line) * titleLineHeight;
-        
+
         if (backgroundImage) {
           // 绘制描边
           ctx.strokeText(line, titleLeftMargin, y);
@@ -208,9 +219,9 @@ export async function POST(request: NextRequest) {
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 2;
         }
-        
+
         ctx.fillText(line, titleLeftMargin, y);
-        
+
         if (backgroundImage) {
           ctx.shadowBlur = 0;
           ctx.lineWidth = 0;
@@ -224,20 +235,20 @@ export async function POST(request: NextRequest) {
       const subtitleLineHeight = subtitleFontSize * 1.4; // 行距 1.4，更舒适
       const subtitleColor = '#2f251f'; // 深咖啡色
       const subtitleMaxWidth = WIDTH - 200; // 与主标题对齐
-      
+
       if (subtitle) {
         ctx.fillStyle = subtitleColor;
         ctx.font = `400 ${subtitleFontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`; // 字重 400，常规，优先使用服务器环境可用字体
-        
+
         if (backgroundImage) {
           ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
           ctx.lineWidth = 3;
         }
-        
+
         const subtitleLines = wrapText(ctx, subtitle, subtitleMaxWidth, subtitleLineHeight);
         for (const line of subtitleLines) {
           const y = subtitleStartY + subtitleLines.indexOf(line) * subtitleLineHeight;
-          
+
           if (backgroundImage) {
             ctx.strokeText(line, titleLeftMargin, y);
             ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
@@ -245,9 +256,9 @@ export async function POST(request: NextRequest) {
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 1;
           }
-          
+
           ctx.fillText(line, titleLeftMargin, y);
-          
+
           if (backgroundImage) {
             ctx.shadowBlur = 0;
             ctx.lineWidth = 0;
@@ -260,15 +271,193 @@ export async function POST(request: NextRequest) {
       const watermarkFontSize = 40;
       const watermarkColor = '#7a695b'; // 比副标题淡一点的咖啡色
       const watermarkY = HEIGHT - 120; // 距离底部120px
-      
+
       ctx.fillStyle = watermarkColor;
       ctx.font = `400 ${watermarkFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
       ctx.textAlign = 'center'; // 居中对齐
       ctx.textBaseline = 'middle';
-      
+
       ctx.fillText(watermarkText, WIDTH / 2, watermarkY);
 
-      // 重置对齐方式
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+    } else if (type === 'wechat-cover') {
+      // -----------------------------------------------------------------------
+      // 公众号封面模式 (2.35:1)
+      // -----------------------------------------------------------------------
+      const canvasWidth = 2350;
+      const canvasHeight = 1000;
+
+      ctx.textBaseline = 'top';
+
+      // 1. 主标题（居中，两行，中上部）
+      const titleFontSize = 100;
+      const titleLineHeight = titleFontSize * 1.6; // 更松的行距
+      const titleColor = '#5a4d42'; // 深咖啡偏深灰色（更浅）
+      const titleMaxWidth = canvasWidth - 300; // 左右各留 150
+
+      // 垂直位置：中上部
+      const titleStartY = canvasHeight * 0.25; // 距顶部约 250px（中上部）
+
+      ctx.fillStyle = titleColor;
+      ctx.font = `400 ${titleFontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`; // 字重 400 (regular)
+      ctx.textAlign = 'center'; // 居中对齐
+
+      // 背景图增强模式
+      if (backgroundImage) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 5;
+      }
+
+      // 限制标题最多2行
+      const titleLines = wrapText(ctx, title, titleMaxWidth, titleLineHeight).slice(0, 2);
+      const titleCenterX = canvasWidth / 2;
+      
+      // 计算主标题第一行的左边缘位置（用于副标题对齐）
+      let titleFirstLineLeftEdge = 0;
+      
+      // 绘制标题，支持字间距（手动调整字符位置，增加3%间距）
+      for (let lineIndex = 0; lineIndex < titleLines.length; lineIndex++) {
+        const line = titleLines[lineIndex];
+        const y = titleStartY + lineIndex * titleLineHeight;
+
+        // 计算字间距（每个字符后增加约3%的间距）
+        const letterSpacing = titleFontSize * 0.03;
+        const chars = line.split('');
+        
+        // 计算整行文本的总宽度（包括字间距）
+        let totalWidth = 0;
+        for (let i = 0; i < chars.length; i++) {
+          totalWidth += ctx.measureText(chars[i]).width;
+          if (i < chars.length - 1) {
+            totalWidth += letterSpacing;
+          }
+        }
+        
+        // 计算每个字符的位置（居中对齐，考虑字间距）
+        const charPositions: number[] = [];
+        let currentX = titleCenterX - totalWidth / 2;
+        
+        // 保存第一行的左边缘位置
+        if (lineIndex === 0) {
+          titleFirstLineLeftEdge = currentX;
+        }
+        
+        for (let i = 0; i < chars.length; i++) {
+          charPositions.push(currentX);
+          const charWidth = ctx.measureText(chars[i]).width;
+          currentX += charWidth + letterSpacing;
+        }
+
+        // 如果有背景图，先绘制描边和阴影
+        if (backgroundImage) {
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.2)';
+          ctx.shadowBlur = 6;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
+          
+          for (let i = 0; i < chars.length; i++) {
+            ctx.strokeText(chars[i], charPositions[i], y);
+          }
+          
+          ctx.shadowBlur = 0;
+        }
+
+        // 绘制填充文字
+        for (let i = 0; i < chars.length; i++) {
+          ctx.fillText(chars[i], charPositions[i], y);
+        }
+
+        if (backgroundImage) {
+          ctx.lineWidth = 0;
+        }
+      }
+
+      // 2. 副标题（居中）
+      if (subtitle) {
+        const subtitleStartY = titleStartY + titleLines.length * titleLineHeight + 60; // 间距 60
+        const subtitleFontSize = 100; // 与主标题相同
+        const subtitleLineHeight = subtitleFontSize * 1.6; // 与主标题相同的行距
+        const subtitleColor = '#5a4d42'; // 深咖啡偏深灰色（与主标题相同）
+
+        ctx.fillStyle = subtitleColor;
+        ctx.font = `400 ${subtitleFontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
+        ctx.textAlign = 'center'; // 居中对齐
+
+        if (backgroundImage) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+          ctx.lineWidth = 4;
+        }
+
+        const subtitleLines = wrapText(ctx, subtitle, titleMaxWidth, subtitleLineHeight);
+        const subtitleCenterX = canvasWidth / 2;
+        
+        // 绘制副标题，支持字间距，居中对齐
+        for (let lineIndex = 0; lineIndex < subtitleLines.length; lineIndex++) {
+          const line = subtitleLines[lineIndex];
+          const y = subtitleStartY + lineIndex * subtitleLineHeight;
+
+          // 计算字间距（每个字符后增加约3%的间距）
+          const letterSpacing = subtitleFontSize * 0.03;
+          const chars = line.split('');
+          
+          // 计算整行文本的总宽度（包括字间距）
+          let totalWidth = 0;
+          for (let i = 0; i < chars.length; i++) {
+            totalWidth += ctx.measureText(chars[i]).width;
+            if (i < chars.length - 1) {
+              totalWidth += letterSpacing;
+            }
+          }
+          
+          // 计算每个字符的位置（居中对齐，考虑字间距）
+          const charPositions: number[] = [];
+          let currentX = subtitleCenterX - totalWidth / 2;
+          for (let i = 0; i < chars.length; i++) {
+            charPositions.push(currentX);
+            const charWidth = ctx.measureText(chars[i]).width;
+            currentX += charWidth + letterSpacing;
+          }
+
+          // 如果有背景图，先绘制描边和阴影
+          if (backgroundImage) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 1;
+            
+            for (let i = 0; i < chars.length; i++) {
+              ctx.strokeText(chars[i], charPositions[i], y);
+            }
+            
+            ctx.shadowBlur = 0;
+          }
+
+          // 绘制填充文字
+          for (let i = 0; i < chars.length; i++) {
+            ctx.fillText(chars[i], charPositions[i], y);
+          }
+
+          if (backgroundImage) {
+            ctx.lineWidth = 0;
+          }
+        }
+      }
+
+      // 3. 水印
+      const watermarkText = 'INFJ·成长记录';
+      const watermarkFontSize = 50;
+      const watermarkColor = '#7a695b';
+      const watermarkY = canvasHeight - 80;
+
+      ctx.fillStyle = watermarkColor;
+      ctx.font = `400 ${watermarkFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      ctx.fillText(watermarkText, canvasWidth / 2, watermarkY);
+
+      // Reset alignment
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
     } else {
@@ -330,7 +519,7 @@ export async function POST(request: NextRequest) {
       if (title && title.trim()) {
         ctx.fillStyle = titleConfig.color;
         ctx.font = `${titleConfig.fontWeight} ${titleConfig.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
-        
+
         const titleLines = wrapText(ctx, title, WIDTH - 240, titleConfig.lineHeight);
         for (let lineIndex = 0; lineIndex < titleLines.length; lineIndex++) {
           const line = titleLines[lineIndex];
@@ -357,7 +546,7 @@ export async function POST(request: NextRequest) {
       if (subtitle && subtitle.trim()) {
         ctx.fillStyle = subtitleConfig.color;
         ctx.font = `${subtitleConfig.fontWeight} ${subtitleConfig.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
-        
+
         const subtitleLines = wrapText(ctx, subtitle, WIDTH - 240, subtitleConfig.lineHeight);
         for (let lineIndex = 0; lineIndex < subtitleLines.length; lineIndex++) {
           const line = subtitleLines[lineIndex];
@@ -382,17 +571,17 @@ export async function POST(request: NextRequest) {
 
       // 按段落分割（保留空行）
       const paragraphs = content.split('\n');
-      
+
       // 按位置排序图片
       const sortedImages = [...images].sort((a, b) => a.position - b.position);
-      
+
       // 绘制段落和插入图片（使用 for...of 以支持 await）
       let imageIndex = 0;
       let paragraphCount = 0; // 用于图片位置计算
-      
+
       for (const paragraph of paragraphs) {
         const trimmed = paragraph.trim();
-        
+
         // Insert images at position 0 (after title/subtitle, before first content paragraph)
         while (imageIndex < sortedImages.length && sortedImages[imageIndex].position === 0) {
           const imageData = sortedImages[imageIndex];
@@ -402,43 +591,43 @@ export async function POST(request: NextRequest) {
             const maxHeight = 400;
             let imgWidth = img.width;
             let imgHeight = img.height;
-            
+
             if (imgWidth > maxWidth) {
               const ratio = maxWidth / imgWidth;
               imgWidth = maxWidth;
               imgHeight = imgHeight * ratio;
             }
-            
+
             if (imgHeight > maxHeight) {
               const ratio = maxHeight / imgHeight;
               imgHeight = maxHeight;
               imgWidth = imgWidth * ratio;
             }
-            
+
             const imgX = (WIDTH - imgWidth) / 2;
             currentY += 30;
-            
+
             ctx.save();
             ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
             ctx.shadowBlur = 8;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 4;
-            
+
             const radius = 12;
             ctx.fillStyle = 'white';
             drawRoundedRect(ctx, imgX - 10, currentY - 10, imgWidth + 20, imgHeight + 20, radius);
             ctx.fill();
-            
+
             ctx.drawImage(img, imgX, currentY, imgWidth, imgHeight);
             ctx.restore();
-            
+
             currentY += imgHeight + 40;
           } catch (error) {
             console.error('加载图片失败:', error);
           }
           imageIndex++;
         }
-        
+
         if (trimmed === '') {
           currentY += bodyConfig.paragraphSpacing;
         } else {
@@ -498,36 +687,36 @@ export async function POST(request: NextRequest) {
               const maxHeight = 400;
               let imgWidth = img.width;
               let imgHeight = img.height;
-              
+
               if (imgWidth > maxWidth) {
                 const ratio = maxWidth / imgWidth;
                 imgWidth = maxWidth;
                 imgHeight = imgHeight * ratio;
               }
-              
+
               if (imgHeight > maxHeight) {
                 const ratio = maxHeight / imgHeight;
                 imgHeight = maxHeight;
                 imgWidth = imgWidth * ratio;
               }
-              
+
               const imgX = (WIDTH - imgWidth) / 2;
               currentY += 30;
-              
+
               ctx.save();
               ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
               ctx.shadowBlur = 8;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 4;
-              
+
               const radius = 12;
               ctx.fillStyle = 'white';
               drawRoundedRect(ctx, imgX - 10, currentY - 10, imgWidth + 20, imgHeight + 20, radius);
               ctx.fill();
-              
+
               ctx.drawImage(img, imgX, currentY, imgWidth, imgHeight);
               ctx.restore();
-              
+
               currentY += imgHeight + 40;
             } catch (error) {
               console.error('加载图片失败:', error);
@@ -547,41 +736,41 @@ export async function POST(request: NextRequest) {
           const maxHeight = 400;
           let imgWidth = img.width;
           let imgHeight = img.height;
-          
+
           if (imgWidth > maxWidth) {
             const ratio = maxWidth / imgWidth;
             imgWidth = maxWidth;
             imgHeight = imgHeight * ratio;
           }
-          
+
           if (imgHeight > maxHeight) {
             const ratio = maxHeight / imgHeight;
             imgHeight = maxHeight;
             imgWidth = imgWidth * ratio;
           }
-          
+
           const imgX = (WIDTH - imgWidth) / 2;
           currentY += 30;
-          
+
           ctx.save();
           ctx.shadowColor = 'rgba(0, 0, 0, 0.1)';
           ctx.shadowBlur = 8;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 4;
-          
+
           const radius = 12;
           ctx.fillStyle = 'white';
           drawRoundedRect(ctx, imgX - 10, currentY - 10, imgWidth + 20, imgHeight + 20, radius);
           ctx.fill();
-          
+
           ctx.drawImage(img, imgX, currentY, imgWidth, imgHeight);
           ctx.restore();
-          
+
           currentY += imgHeight + 40;
         } catch (error) {
           console.error('加载图片失败:', error);
         }
-          imageIndex++;
+        imageIndex++;
       }
 
       // 内页水印：INFJ·成长记录（底部中间，参照封面页）
@@ -589,12 +778,12 @@ export async function POST(request: NextRequest) {
       const watermarkFontSize = 40;
       const watermarkColor = '#7a695b'; // 比副标题淡一点的咖啡色
       const watermarkY = HEIGHT - 120; // 距离底部120px
-      
+
       ctx.fillStyle = watermarkColor;
       ctx.font = `400 ${watermarkFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
       ctx.textAlign = 'center'; // 居中对齐
       ctx.textBaseline = 'middle';
-      
+
       ctx.fillText(watermarkText, WIDTH / 2, watermarkY);
     }
 
