@@ -461,18 +461,25 @@ export async function POST(request: NextRequest) {
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
     } else {
-      // 内页样式：精致排版，参照图片风格
-      let currentY = 180; // 起始位置，留出更多顶部空间，更美观
-      ctx.textAlign = 'left';
+      // 内页样式：精致排版
+      // 如果没有背景图片，使用纯色背景 #F6F1E8
+      if (!backgroundImage) {
+        ctx.fillStyle = '#F6F1E8';
+        ctx.fillRect(0, 0, WIDTH, HEIGHT);
+      }
+
+      // 文本垂直起始位置：30%
+      let currentY = Math.round(HEIGHT * 0.30); // 30% 位置，约 497px
+      ctx.textAlign = 'center'; // 居中对齐
       ctx.textBaseline = 'top';
 
-      // 内页字体体系定义（参照图片风格）
-      // 主标题：较大、加粗、深灰色
+      // 内页字体体系定义
+      // 主标题：较大、加粗
       const titleConfig = {
         fontSize: 64,
         fontWeight: 700,
-        color: '#2f251f', // 深咖啡色
-        lineHeight: 64 * 1.3,
+        color: '#5F5F5F',
+        lineHeight: 64 * 1.7,
         bottomSpacing: 40,
       };
 
@@ -480,17 +487,17 @@ export async function POST(request: NextRequest) {
       const subtitleConfig = {
         fontSize: 48,
         fontWeight: 400,
-        color: '#4d4036', // 稍浅的深咖啡色
-        lineHeight: 48 * 1.4,
+        color: '#5F5F5F',
+        lineHeight: 48 * 1.7,
         bottomSpacing: 50,
       };
 
-      // 正文：舒适阅读的字体大小
+      // 正文：Source Han Serif SC, 44px, 行高 1.7, 颜色 #5F5F5F
       const bodyConfig = {
-        fontSize: 40,
+        fontSize: 44,
         fontWeight: 400,
-        color: '#4d4036', // 深咖啡色
-        lineHeight: 40 * 1.8, // 更大的行距，更舒适的阅读体验
+        color: '#5F5F5F',
+        lineHeight: 44 * 1.7, // 行高 1.7
         paragraphSpacing: 32, // 段落间距
         bottomSpacing: 32, // 添加 bottomSpacing 属性
       };
@@ -499,40 +506,40 @@ export async function POST(request: NextRequest) {
       const h1Config = {
         fontSize: 56,
         fontWeight: 600,
-        color: COLORS.h1Color,
-        lineHeight: 56 * 1.3,
+        color: '#5F5F5F',
+        lineHeight: 56 * 1.7,
         bottomSpacing: 36,
-        paragraphSpacing: 32, // 添加 paragraphSpacing 属性
+        paragraphSpacing: 32,
       };
 
       // H2 标题（内容中的二级标题）
       const h2Config = {
         fontSize: 48,
         fontWeight: 500,
-        color: COLORS.h2Color,
-        lineHeight: 48 * 1.4,
+        color: '#5F5F5F',
+        lineHeight: 48 * 1.7,
         bottomSpacing: 28,
-        paragraphSpacing: 32, // 添加 paragraphSpacing 属性
+        paragraphSpacing: 32,
       };
 
       // 先绘制主标题（title）
       if (title && title.trim()) {
         ctx.fillStyle = titleConfig.color;
-        ctx.font = `${titleConfig.fontWeight} ${titleConfig.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
+        ctx.font = `${titleConfig.fontWeight} ${titleConfig.fontSize}px "Source Han Serif SC", "Noto Serif SC", "Georgia", serif`;
 
-        const titleLines = wrapText(ctx, title, WIDTH - 240, titleConfig.lineHeight);
+        const titleLines = wrapText(ctx, title, WIDTH - 120, titleConfig.lineHeight);
         for (let lineIndex = 0; lineIndex < titleLines.length; lineIndex++) {
           const line = titleLines[lineIndex];
           if (backgroundImage) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.lineWidth = 4;
-            ctx.strokeText(line, 120, currentY);
+            ctx.strokeText(line, WIDTH / 2, currentY);
             ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
             ctx.shadowBlur = 5;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 2;
           }
-          ctx.fillText(line, 120, currentY);
+          ctx.fillText(line, WIDTH / 2, currentY);
           if (backgroundImage) {
             ctx.shadowBlur = 0;
             ctx.lineWidth = 0;
@@ -545,21 +552,21 @@ export async function POST(request: NextRequest) {
       // 再绘制副标题（subtitle）
       if (subtitle && subtitle.trim()) {
         ctx.fillStyle = subtitleConfig.color;
-        ctx.font = `${subtitleConfig.fontWeight} ${subtitleConfig.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
+        ctx.font = `${subtitleConfig.fontWeight} ${subtitleConfig.fontSize}px "Source Han Serif SC", "Noto Serif SC", "Georgia", serif`;
 
-        const subtitleLines = wrapText(ctx, subtitle, WIDTH - 240, subtitleConfig.lineHeight);
+        const subtitleLines = wrapText(ctx, subtitle, WIDTH - 120, subtitleConfig.lineHeight);
         for (let lineIndex = 0; lineIndex < subtitleLines.length; lineIndex++) {
           const line = subtitleLines[lineIndex];
           if (backgroundImage) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.lineWidth = 3;
-            ctx.strokeText(line, 120, currentY);
+            ctx.strokeText(line, WIDTH / 2, currentY);
             ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 1;
           }
-          ctx.fillText(line, 120, currentY);
+          ctx.fillText(line, WIDTH / 2, currentY);
           if (backgroundImage) {
             ctx.shadowBlur = 0;
             ctx.lineWidth = 0;
@@ -569,8 +576,8 @@ export async function POST(request: NextRequest) {
         currentY += subtitleConfig.bottomSpacing;
       }
 
-      // 按段落分割（保留空行）
-      const paragraphs = content.split('\n');
+      // 按段落分割（过滤空行，与前端逻辑保持一致）
+      const paragraphs = content.split('\n').filter((p: string) => p.trim() !== '');
 
       // 按位置排序图片
       const sortedImages = [...images].sort((a, b) => a.position - b.position);
@@ -646,28 +653,26 @@ export async function POST(request: NextRequest) {
           }
 
           ctx.fillStyle = config.color;
-          ctx.font = `${config.fontWeight} ${config.fontSize}px "Noto Serif SC", "Georgia", "Times New Roman", serif`;
+          ctx.font = `${config.fontWeight} ${config.fontSize}px "Source Han Serif SC", "Noto Serif SC", "Georgia", serif`;
 
-          const lines = wrapText(ctx, textToDraw, WIDTH - 240, config.lineHeight);
+          const lines = wrapText(ctx, textToDraw, WIDTH - 120, config.lineHeight);
           for (let lineIndex = 0; lineIndex < lines.length; lineIndex++) {
             const line = lines[lineIndex];
             if (currentY > HEIGHT - 150) {
               break;
             }
-            // 正文首行不缩进，保持左对齐的简洁风格
-            const indent = 0;
 
             if (backgroundImage) { // Apply stroke and shadow for readability on background image
               ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
               ctx.lineWidth = 3;
-              ctx.strokeText(line, 120 + indent, currentY);
+              ctx.strokeText(line, WIDTH / 2, currentY);
               ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
               ctx.shadowBlur = 4;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 1;
             }
 
-            ctx.fillText(line, 120 + indent, currentY);
+            ctx.fillText(line, WIDTH / 2, currentY);
 
             if (backgroundImage) {
               ctx.shadowBlur = 0;
@@ -773,14 +778,14 @@ export async function POST(request: NextRequest) {
         imageIndex++;
       }
 
-      // 内页水印：INFJ·成长记录（底部中间，参照封面页）
-      const watermarkText = 'INFJ·成长记录';
-      const watermarkFontSize = 40;
-      const watermarkColor = '#7a695b'; // 比副标题淡一点的咖啡色
-      const watermarkY = HEIGHT - 120; // 距离底部120px
+      // 内页水印：INFJ · 成长记录（底部中间）
+      const watermarkText = 'INFJ · 成长记录';
+      const watermarkFontSize = 28;
+      const watermarkColor = 'rgba(138, 138, 138, 0.7)'; // #8A8A8A with 0.7 opacity
+      const watermarkY = HEIGHT - 100; // 距离底部100px
 
       ctx.fillStyle = watermarkColor;
-      ctx.font = `400 ${watermarkFontSize}px "Iowan Old Style", "Palatino", "Georgia", "Noto Serif SC", serif`;
+      ctx.font = `400 ${watermarkFontSize}px "Source Han Serif SC", "Noto Serif SC", "Georgia", serif`;
       ctx.textAlign = 'center'; // 居中对齐
       ctx.textBaseline = 'middle';
 
