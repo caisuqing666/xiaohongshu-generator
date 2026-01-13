@@ -541,10 +541,11 @@ export async function POST(request: NextRequest) {
         ctx.fillRect(0, 0, WIDTH, HEIGHT);
       }
 
-      // 文本垂直起始位置：30%
-      let currentY = Math.round(HEIGHT * 0.30); // 30% 位置，约 497px
-      ctx.textAlign = 'center'; // 居中对齐
+      // 文本垂直起始位置：15%（往上调整）
+      let currentY = Math.round(HEIGHT * 0.15); // 15% 位置，约 248px，往上调整
+      ctx.textAlign = 'left'; // 左对齐（往左调整）
       ctx.textBaseline = 'top';
+      const leftMargin = 100; // 左边距
 
       // 内页字体体系定义
       // 主标题：较大、加粗
@@ -606,13 +607,13 @@ export async function POST(request: NextRequest) {
           if (backgroundImage) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.lineWidth = 4;
-            ctx.strokeText(line, WIDTH / 2, currentY);
+            ctx.strokeText(line, leftMargin, currentY);
             ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
             ctx.shadowBlur = 5;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 2;
           }
-          ctx.fillText(line, WIDTH / 2, currentY);
+          ctx.fillText(line, leftMargin, currentY);
           if (backgroundImage) {
             ctx.shadowBlur = 0;
             ctx.lineWidth = 0;
@@ -633,13 +634,13 @@ export async function POST(request: NextRequest) {
           if (backgroundImage) {
             ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
             ctx.lineWidth = 3;
-            ctx.strokeText(line, WIDTH / 2, currentY);
+            ctx.strokeText(line, leftMargin, currentY);
             ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 0;
             ctx.shadowOffsetY = 1;
           }
-          ctx.fillText(line, WIDTH / 2, currentY);
+          ctx.fillText(line, leftMargin, currentY);
           if (backgroundImage) {
             ctx.shadowBlur = 0;
             ctx.lineWidth = 0;
@@ -738,14 +739,14 @@ export async function POST(request: NextRequest) {
             if (backgroundImage) { // Apply stroke and shadow for readability on background image
               ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
               ctx.lineWidth = 3;
-              ctx.strokeText(line, WIDTH / 2, currentY);
+              ctx.strokeText(line, leftMargin, currentY);
               ctx.shadowColor = 'rgba(0, 0, 0, 0.12)';
               ctx.shadowBlur = 4;
               ctx.shadowOffsetX = 0;
               ctx.shadowOffsetY = 1;
             }
 
-            ctx.fillText(line, WIDTH / 2, currentY);
+            ctx.fillText(line, leftMargin, currentY);
 
             if (backgroundImage) {
               ctx.shadowBlur = 0;
