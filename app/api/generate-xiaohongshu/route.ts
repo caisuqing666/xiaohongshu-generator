@@ -117,6 +117,77 @@ function wrapText(
   return lines;
 }
 
+// 将标题强制分成两行的函数
+function splitTitleIntoTwoLines(
+  ctx: any,
+  text: string,
+  maxWidth: number
+): string[] {
+  // 如果文本已经包含换行符，先按换行符分割
+  const allParts = text.split('\n');
+  const nonEmptyParts = allParts.filter(p => p.trim() !== '');
+  
+  // 如果完全没有内容，返回两行空
+  if (nonEmptyParts.length === 0) return ['', ''];
+  
+  // 如果已经有多个部分（包括空行），取前两个部分
+  if (allParts.length >= 2) {
+    return [allParts[0].trim(), allParts[1].trim()];
+  }
+  
+  // 如果只有一个部分，需要智能分割
+  const fullText = nonEmptyParts[0];
+  
+  // 如果文本很短，不需要换行，直接返回两行（第一行有内容，第二行空）
+  const fullWidth = ctx.measureText(fullText).width;
+  if (fullWidth <= maxWidth) {
+    return [fullText, ''];
+  }
+  
+  // 尝试找到最佳分割点（尽量在中间位置）
+  const chars = fullText.split('');
+  const totalChars = chars.length;
+  const targetSplit = Math.floor(totalChars / 2);
+  
+  // 从中间位置向前后寻找合适的分割点（优先在空格、标点处分割）
+  let bestSplit = targetSplit;
+  
+  // 向前寻找（最多向前找10个字符）
+  for (let i = targetSplit; i >= Math.max(0, targetSplit - 10); i--) {
+    if (i === 0) {
+      bestSplit = 0;
+      break;
+    }
+    const char = chars[i];
+    // 优先在空格、逗号、句号等位置分割
+    if (char === ' ' || char === '，' || char === '。' || char === '、' || char === '；') {
+      bestSplit = i + 1; // 分割点后移一位，不包含标点
+      break;
+    }
+  }
+  
+  // 如果没找到合适的分割点，向后寻找
+  if (bestSplit === targetSplit) {
+    for (let i = targetSplit; i < Math.min(totalChars, targetSplit + 10); i++) {
+      const char = chars[i];
+      if (char === ' ' || char === '，' || char === '。' || char === '、' || char === '；') {
+        bestSplit = i + 1;
+        break;
+      }
+    }
+  }
+  
+  // 如果还是没找到，就强制在中间分割
+  if (bestSplit === targetSplit) {
+    bestSplit = Math.floor(totalChars / 2);
+  }
+  
+  const line1 = chars.slice(0, bestSplit).join('').trim();
+  const line2 = chars.slice(bestSplit).join('').trim();
+  
+  return [line1, line2];
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { title, subtitle, content, type, images = [], backgroundImage } = await request.json();
@@ -189,10 +260,10 @@ export async function POST(request: NextRequest) {
       ctx.textBaseline = 'top';
 
       // 1. 封面主标题（最大元素，参照图片）
-      // 位置：顶部约 8% 区域，左侧有显著边距，增加呼吸感
-      const titleStartY = HEIGHT * 0.08; // 约 132px，更靠上，增加顶部留白
+      // 位置：顶部约 18% 区域，标题往下压
+      const titleStartY = HEIGHT * 0.18; // 约 298px，标题往下压
       const titleFontSize = 130; // 主标题字号
-      const titleLineHeight = titleFontSize * 1.15; // 行距 1.15，保持紧凑但可读
+      const titleLineHeight = titleFontSize * 1.4; // 行距 1.4，增加行距让两行更舒适
       const titleColor = '#2f251f'; // 深咖啡色
       const titleMaxWidth = WIDTH - 200; // 左侧留 100px 边距，右侧留 100px，参照图片
       const titleLeftMargin = 100; // 左侧边距，参照图片
@@ -206,7 +277,8 @@ export async function POST(request: NextRequest) {
         ctx.lineWidth = 4;
       }
 
-      const titleLines = wrapText(ctx, title, titleMaxWidth, titleLineHeight);
+      // 主标题强制分成两行
+      const titleLines = splitTitleIntoTwoLines(ctx, title, titleMaxWidth);
       for (const line of titleLines) {
         const y = titleStartY + titleLines.indexOf(line) * titleLineHeight;
 
@@ -245,7 +317,8 @@ export async function POST(request: NextRequest) {
           ctx.lineWidth = 3;
         }
 
-        const subtitleLines = wrapText(ctx, subtitle, subtitleMaxWidth, subtitleLineHeight);
+        // 副标题只显示一行，如果超长则截断
+        const subtitleLines = wrapText(ctx, subtitle, subtitleMaxWidth, subtitleLineHeight).slice(0, 1);
         for (const line of subtitleLines) {
           const y = subtitleStartY + subtitleLines.indexOf(line) * subtitleLineHeight;
 

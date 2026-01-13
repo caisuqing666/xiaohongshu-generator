@@ -150,6 +150,8 @@ interface SplitImageItem {
 
 export default function XiaohongshuGenerator() {
   const [title, setTitle] = useState('');
+  const [titleLine1, setTitleLine1] = useState(''); // 主标题第一行（封面模式）
+  const [titleLine2, setTitleLine2] = useState(''); // 主标题第二行（封面模式）
   const [subtitle, setSubtitle] = useState('');
   const [content, setContent] = useState('');
   const [type, setType] = useState<'cover' | 'content' | 'wechat-cover' | 'photo-split'>('cover');
@@ -426,10 +428,22 @@ export default function XiaohongshuGenerator() {
   };
 
   const generateImage = async () => {
-    // 封面模式和公众号封面模式必须有标题，内页模式必须有标题或内容
-    if ((type === 'cover' || type === 'wechat-cover') && !title.trim()) {
-      alert('封面模式需要填写标题');
-      return;
+    // 封面模式：合并两行标题
+    let finalTitle = title;
+    if (type === 'cover') {
+      // 封面模式使用两个输入框的内容
+      finalTitle = [titleLine1.trim(), titleLine2.trim()].filter(t => t).join('\n');
+      if (!finalTitle.trim()) {
+        alert('封面模式需要填写主标题');
+        return;
+      }
+    } else if (type === 'wechat-cover') {
+      // 公众号封面模式使用单个标题输入框
+      if (!title.trim()) {
+        alert('公众号封面模式需要填写标题');
+        return;
+      }
+      finalTitle = title;
     }
 
     if (type === 'content' && !title.trim() && !content.trim()) {
@@ -449,7 +463,7 @@ export default function XiaohongshuGenerator() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          title,
+          title: finalTitle,
           subtitle,
           content,
           type,
@@ -673,31 +687,87 @@ export default function XiaohongshuGenerator() {
             </div>
           )}
 
-          <div style={{ marginBottom: '1.5rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              color: 'var(--color-text-primary)',
-              fontWeight: 600
-            }}>
-              主标题 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({(type === 'cover' || type === 'wechat-cover') ? '必填' : '可选'})</span>
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="请输入主标题"
-              style={{
-                width: '100%',
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                border: '1px solid var(--color-border)',
-                background: 'rgba(255, 255, 255, 0.9)',
+          {/* 封面模式：显示两个主标题输入框 */}
+          {type === 'cover' ? (
+            <>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '0.5rem',
+                  color: 'var(--color-text-primary)',
+                  fontWeight: 600
+                }}>
+                  主标题第一行 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(必填)</span>
+                </label>
+                <input
+                  type="text"
+                  value={titleLine1}
+                  onChange={(e) => setTitleLine1(e.target.value)}
+                  placeholder="请输入主标题第一行"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--color-border)',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '1rem',
+                  }}
+                />
+              </div>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{
+                  display: 'block',
+                  marginBottom: '0.5rem',
+                  color: 'var(--color-text-primary)',
+                  fontWeight: 600
+                }}>
+                  主标题第二行 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>(可选)</span>
+                </label>
+                <input
+                  type="text"
+                  value={titleLine2}
+                  onChange={(e) => setTitleLine2(e.target.value)}
+                  placeholder="请输入主标题第二行"
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem 1rem',
+                    borderRadius: '10px',
+                    border: '1px solid var(--color-border)',
+                    background: 'rgba(255, 255, 255, 0.9)',
+                    color: 'var(--color-text-primary)',
+                    fontSize: '1rem',
+                  }}
+                />
+              </div>
+            </>
+          ) : (
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{
+                display: 'block',
+                marginBottom: '0.5rem',
                 color: 'var(--color-text-primary)',
-                fontSize: '1rem',
-              }}
-            />
-          </div>
+                fontWeight: 600
+              }}>
+                主标题 <span style={{ color: 'var(--color-text-muted)', fontWeight: 400 }}>({(type === 'wechat-cover') ? '必填' : '可选'})</span>
+              </label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="请输入主标题"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem 1rem',
+                  borderRadius: '10px',
+                  border: '1px solid var(--color-border)',
+                  background: 'rgba(255, 255, 255, 0.9)',
+                  color: 'var(--color-text-primary)',
+                  fontSize: '1rem',
+                }}
+              />
+            </div>
+          )}
 
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{
@@ -904,7 +974,8 @@ export default function XiaohongshuGenerator() {
             onClick={generateImage}
             disabled={
               loading ||
-              ((type === 'cover' || type === 'wechat-cover') && !title.trim()) ||
+              (type === 'cover' && !titleLine1.trim()) ||
+              (type === 'wechat-cover' && !title.trim()) ||
               (type === 'content' && !title.trim() && !content.trim())
             }
             style={{
@@ -913,7 +984,8 @@ export default function XiaohongshuGenerator() {
               borderRadius: '25px',
               background:
                 loading ||
-                  ((type === 'cover' || type === 'wechat-cover') && !title.trim()) ||
+                  (type === 'cover' && !titleLine1.trim()) ||
+                  (type === 'wechat-cover' && !title.trim()) ||
                   (type === 'content' && !title.trim() && !content.trim())
                   ? 'var(--color-text-muted)'
                   : 'var(--color-accent)',
@@ -923,7 +995,8 @@ export default function XiaohongshuGenerator() {
               fontWeight: 600,
               cursor:
                 loading ||
-                  ((type === 'cover' || type === 'wechat-cover') && !title.trim()) ||
+                  (type === 'cover' && !titleLine1.trim()) ||
+                  (type === 'wechat-cover' && !title.trim()) ||
                   (type === 'content' && !title.trim() && !content.trim())
                   ? 'not-allowed'
                   : 'pointer',
