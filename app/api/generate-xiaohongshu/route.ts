@@ -339,8 +339,8 @@ export async function POST(request: NextRequest) {
         }
       }
 
-      // 3. 水印：INFJ·成长记录（底部中间）
-      const watermarkText = 'INFJ·成长记录';
+      // 3. 水印：蔡蔡｜INFJ成长记录（底部中间）
+      const watermarkText = '蔡蔡｜INFJ成长记录';
       const watermarkFontSize = 40;
       const watermarkColor = '#7a695b'; // 比副标题淡一点的咖啡色
       const watermarkY = HEIGHT - 120; // 距离底部120px
@@ -518,7 +518,7 @@ export async function POST(request: NextRequest) {
       }
 
       // 3. 水印
-      const watermarkText = 'INFJ·成长记录';
+      const watermarkText = '蔡蔡｜INFJ成长记录';
       const watermarkFontSize = 50;
       const watermarkColor = '#7a695b';
       const watermarkY = canvasHeight - 80;
@@ -851,8 +851,8 @@ export async function POST(request: NextRequest) {
         imageIndex++;
       }
 
-      // 内页水印：INFJ · 成长记录（底部中间）
-      const watermarkText = 'INFJ · 成长记录';
+      // 内页水印：蔡蔡｜INFJ成长记录（底部中间）
+      const watermarkText = '蔡蔡｜INFJ成长记录';
       const watermarkFontSize = 28;
       const watermarkColor = 'rgba(138, 138, 138, 0.7)'; // #8A8A8A with 0.7 opacity
       const watermarkY = HEIGHT - 100; // 距离底部100px
